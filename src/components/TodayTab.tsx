@@ -244,7 +244,7 @@ export default function TodayTab({
                           if (!confirmChange) return;
                         }
 
-                        let finalNotes = tempNotes[employee] || currentNotes;
+                        let finalNotes = tempNotes[employee] !== undefined ? tempNotes[employee] : currentNotes;
                         if (status === "Absent") {
                           const reason = window.prompt(`Please enter the reason for ${employee}'s absence:`, finalNotes);
                           if (reason !== null) {
@@ -252,6 +252,10 @@ export default function TodayTab({
                           } else {
                             return; // User cancelled
                           }
+                        } else if (currentStatus === "Absent" && status !== "Absent") {
+                          // Clear absence reason when changing from Absent to something else
+                          finalNotes = "";
+                          setTempNotes({ ...tempNotes, [employee]: "" });
                         }
                         
                         onLogAttendance(employee, status, finalNotes);

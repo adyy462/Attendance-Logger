@@ -105,7 +105,7 @@ export async function ensureRequiredSheetsExist(spreadsheetId: string, token: st
         const sampleLogs = [
           ["2026-06-16", "Aditya", "Half Day", "appointment", new Date("2026-06-16T10:00:00Z").toISOString()],
           ["2026-06-15", "Aditya", "Present", "", new Date("2026-06-15T09:00:00Z").toISOString()],
-          ["2026-06-15", "Kuldeep", "Absent", "sick", new Date("2026-06-15T09:30:00Z").toISOString()],
+          ["2026-06-15", "Kuldeep", "Absent", "", new Date("2026-06-15T09:30:00Z").toISOString()],
           ["2026-06-08", "Aditya", "Week Off", "", new Date("2026-06-08T08:00:00Z").toISOString()],
         ];
         const logAppendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet2!A2:E100:append?valueInputOption=USER_ENTERED`;
@@ -271,7 +271,7 @@ async function initializeSheets(spreadsheetId: string, token: string) {
   const sampleLogs = [
     ["2026-06-16", "Aditya", "Half Day", "appointment", new Date("2026-06-16T10:00:00Z").toISOString()],
     ["2026-06-15", "Aditya", "Present", "", new Date("2026-06-15T09:00:00Z").toISOString()],
-    ["2026-06-15", "Kuldeep", "Absent", "sick", new Date("2026-06-15T09:30:00Z").toISOString()],
+    ["2026-06-15", "Kuldeep", "Absent", "", new Date("2026-06-15T09:30:00Z").toISOString()],
     ["2026-06-08", "Aditya", "Week Off", "", new Date("2026-06-08T08:00:00Z").toISOString()],
   ];
 
