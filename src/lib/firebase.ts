@@ -23,29 +23,26 @@ provider.setCustomParameters({
 });
 
 let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = localStorage.getItem("google_access_token");
+let tokenExpiry: string | null = localStorage.getItem("google_access_token_expiry");
 
-// Save token to memory and session storage (safer than localStorage for access tokens but persists refreshing)
-// Note: The guide says "do NOT store the access token in localStorage or sessionStorage. Use in-memory caching."
-// We will strictly use in-memory caching to respect the security instructions.
+if (tokenExpiry && parseInt(tokenExpiry) < Date.now()) {
+  cachedAccessToken = null;
+  localStorage.removeItem("google_access_token");
+  localStorage.removeItem("google_access_token_expiry");
+}
 
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthSuccess?: (user: User, token: string | null) => void,
   onAuthFailure?: () => void
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        // If there is a user but no cached token, they might have refreshed.
-        // We will need them to re-sign-in to get a fresh credential token, or we can see if we can trigger the popup.
-        // To be safe and compliant, we clear token and trigger failure so the UI can show the Re-Auth or Connect button.
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
-      }
+      if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
     } else {
       cachedAccessToken = null;
+      localStorage.removeItem("google_access_token");
+      localStorage.removeItem("google_access_token_expiry");
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -61,6 +58,9 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     }
 
     cachedAccessToken = credential.accessToken;
+    localStorage.setItem("google_access_token", cachedAccessToken);
+    localStorage.setItem("google_access_token_expiry", (Date.now() + 3500 * 1000).toString()); // 3500 seconds
+
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error("Sign in error:", error);
@@ -77,6 +77,8 @@ export const getAccessToken = async (): Promise<string | null> => {
 export const logout = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+  localStorage.removeItem("google_access_token");
+  localStorage.removeItem("google_access_token_expiry");
 };
 
 // Shared Spreadsheet Config helpers

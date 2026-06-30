@@ -237,6 +237,13 @@ export default function TodayTab({
                       disabled={!canEdit}
                       onClick={() => {
                         if (!canEdit) return;
+                        
+                        // Check if already marked
+                        if (currentStatus !== "not marked" && currentStatus !== status) {
+                          const confirmChange = window.confirm(`The attendance is already marked as ${currentStatus}. Do you want to change the status to ${status}?`);
+                          if (!confirmChange) return;
+                        }
+
                         let finalNotes = tempNotes[employee] || currentNotes;
                         if (status === "Absent") {
                           const reason = window.prompt(`Please enter the reason for ${employee}'s absence:`, finalNotes);

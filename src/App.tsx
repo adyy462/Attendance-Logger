@@ -162,12 +162,18 @@ export default function App() {
     const unsubscribe = initAuth(
       async (authUser, accessToken) => {
         setUser(authUser);
-        setToken(accessToken);
         setNeedsAuth(false);
-        setSyncStatus("syncing");
         
-        // Auto load existing spreadsheet or find/create one with access control
-        await handleSheetsOnboarding(accessToken, authUser);
+        if (accessToken) {
+          setToken(accessToken);
+          setSyncStatus("syncing");
+          // Auto load existing spreadsheet or find/create one with access control
+          await handleSheetsOnboarding(accessToken, authUser);
+        } else {
+          setToken(null);
+          setSyncStatus("error"); // indicates token expired but user is logged in
+          loadOfflineData();
+        }
       },
       () => {
         setNeedsAuth(true);
@@ -965,6 +971,8 @@ export default function App() {
           currentUserEmail={user?.email || ""}
           onAddAllowedEmail={handleAddAllowedEmail}
           onRemoveAllowedEmail={handleRemoveAllowedEmail}
+          needsReconnect={!token}
+          onReconnect={handleGoogleLogin}
         />
       )}
 

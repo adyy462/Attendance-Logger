@@ -20,6 +20,8 @@ interface SheetsConfigProps {
   currentUserEmail: string;
   onAddAllowedEmail: (email: string) => void;
   onRemoveAllowedEmail: (email: string) => void;
+  needsReconnect?: boolean;
+  onReconnect?: () => void;
 }
 
 export default function SheetsConfig({
@@ -36,6 +38,8 @@ export default function SheetsConfig({
   currentUserEmail,
   onAddAllowedEmail,
   onRemoveAllowedEmail,
+  needsReconnect,
+  onReconnect,
 }: SheetsConfigProps) {
   const [manualId, setManualId] = useState("");
   const [copied, setCopied] = useState(false);
@@ -77,7 +81,29 @@ export default function SheetsConfig({
         {/* Content */}
         <div className="p-5 space-y-4">
           {/* Status Alert */}
-          {spreadsheetId ? (
+          {spreadsheetId && needsReconnect ? (
+            <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-xl space-y-2.5">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5" />
+                <div className="flex-1">
+                  <span className="text-xs font-bold text-rose-800 block uppercase tracking-wide">Google Sheets Disconnected</span>
+                  <p className="text-[11px] text-rose-600 mt-0.5">
+                    Your Google Sheets session has expired. You are still logged into the app, but need to reconnect to sync your data.
+                  </p>
+                </div>
+              </div>
+              <div className="pt-1">
+                <button
+                  onClick={onReconnect}
+                  disabled={isLoading}
+                  className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm uppercase tracking-wide"
+                >
+                  {isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  Reconnect Sheets Sync
+                </button>
+              </div>
+            </div>
+          ) : spreadsheetId ? (
             <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl space-y-2.5">
               <div className="flex items-start gap-2">
                 <Check className="w-4 h-4 text-emerald-600 mt-0.5" />
