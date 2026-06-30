@@ -1,0 +1,6 @@
+{
+  "name": "Attendance Logger",
+  "description": "A real-time attendance tracking dashboard with Google Sheets synchronization and AI scanner manual entry automation.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
