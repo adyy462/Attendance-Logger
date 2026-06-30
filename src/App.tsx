@@ -55,9 +55,18 @@ export default function App() {
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
 
   // Core Data state
-  const [logs, setLogs] = useState<AttendanceRecord[]>([]);
-  const [summaries, setSummaries] = useState<MonthlySummary[]>([]);
-  const [employees, setEmployees] = useState<string[]>(["Aditya", "Kuldeep"]);
+  const [logs, setLogs] = useState<AttendanceRecord[]>(() => {
+    const saved = localStorage.getItem("attendance_logs");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [summaries, setSummaries] = useState<MonthlySummary[]>(() => {
+    // If we had summaries saved we could load them, else compute later
+    return [];
+  });
+  const [employees, setEmployees] = useState<string[]>(() => {
+    const saved = localStorage.getItem("attendance_employees");
+    return saved ? JSON.parse(saved) : ["Aditya", "Kuldeep"];
+  });
   
   // Navigation & Date state
   const [activeTab, setActiveTab] = useState<"Today" | "Calendar" | "Summary" | "History">("Today");
@@ -283,22 +292,60 @@ export default function App() {
     try {
       const data = await fetchSpreadsheetData(sheetId, accessToken);
       
-      // Update local states
+      let mergedLogs = [...logs];
+      let didMergeChange = false;
+
       if (data.logs && data.logs.length > 0) {
-        setLogs(data.logs);
-      }
-      if (data.summaries && data.summaries.length > 0) {
-        setSummaries(data.summaries);
+        // Merge remote logs into local logs based on timestamp
+        const remoteLogsMap = new Map(data.logs.map(l => [l.id, l]));
+        const localLogsMap = new Map(logs.map(l => [l.id, l]));
+
+        const finalLogsMap = new Map<string, AttendanceRecord>();
+
+        // For every remote log, check if we have a local one
+        for (const [id, remoteLog] of remoteLogsMap.entries()) {
+          const localLog = localLogsMap.get(id);
+          if (localLog) {
+            // Keep the one with the more recent timestamp
+            const remoteTime = new Date(remoteLog.timestamp).getTime();
+            const localTime = new Date(localLog.timestamp).getTime();
+            if (remoteTime > localTime) {
+              finalLogsMap.set(id, remoteLog);
+              didMergeChange = true;
+            } else {
+              finalLogsMap.set(id, localLog);
+            }
+          } else {
+            finalLogsMap.set(id, remoteLog);
+            didMergeChange = true;
+          }
+        }
+
+        // Add any local logs that don't exist remotely (e.g. newly created)
+        for (const [id, localLog] of localLogsMap.entries()) {
+          if (!remoteLogsMap.has(id)) {
+            finalLogsMap.set(id, localLog);
+          }
+        }
+
+        mergedLogs = Array.from(finalLogsMap.values());
+        
+        setLogs(mergedLogs);
+        
+        const allUniqueEmployees = Array.from(
+          new Set(["Aditya", "Kuldeep", ...mergedLogs.map((l) => l.employee)])
+        ).filter(Boolean);
+        setEmployees(allUniqueEmployees);
+        
+        saveOfflineData(mergedLogs, allUniqueEmployees);
+
+        if (didMergeChange) {
+           // If we absorbed new changes from remote, we need to recompute summaries
+           const updatedSummaries = computeSummaries(mergedLogs, allUniqueEmployees);
+           setSummaries(updatedSummaries);
+        }
       }
 
-      // Check for any additional employees logged in logs
-      const allUniqueEmployees = Array.from(
-        new Set(["Aditya", "Kuldeep", ...data.logs.map((l) => l.employee)])
-      ).filter(Boolean);
-      setEmployees(allUniqueEmployees);
-
-      // Save offline copy
-      saveOfflineData(data.logs, allUniqueEmployees);
       setSyncStatus("synced");
     } catch (err) {
       console.error("Failed to load sheet data:", err);
@@ -409,10 +456,14 @@ export default function App() {
 
   // Log attendance: Instant updates + background sync
   const handleLogAttendance = async (employee: string, status: AttendanceStatus, notes: string) => {
-    const isAditya = employee.toLowerCase() === "aditya";
-    if (isAditya && (!user?.email || user.email.toLowerCase() !== "adyy462@gmail.com")) {
-      alert("You don't have permission to edit Aditya's attendance.");
-      return;
+    const isAdityaAdmin = user?.email?.toLowerCase() === "adyy462@gmail.com";
+    
+    // Prevent non-admin users from editing anyone else's attendance
+    if (!isAdityaAdmin) {
+      if (!user?.email || !user.email.toLowerCase().includes(employee.toLowerCase())) {
+        alert("You only have permission to edit your own attendance.");
+        return;
+      }
     }
 
     const recordId = `${selectedDate}_${employee}`;
@@ -448,10 +499,14 @@ export default function App() {
   const handleDeleteLog = async (logId: string) => {
     const logToDelete = logs.find((l) => l.id === logId);
     if (logToDelete) {
-      const isAditya = logToDelete.employee.toLowerCase() === "aditya";
-      if (isAditya && (!user?.email || user.email.toLowerCase() !== "adyy462@gmail.com")) {
-        alert("You don't have permission to delete Aditya's attendance.");
-        return;
+      const isAdityaAdmin = user?.email?.toLowerCase() === "adyy462@gmail.com";
+      
+      // Prevent non-admin users from deleting anyone else's attendance
+      if (!isAdityaAdmin) {
+        if (!user?.email || !user.email.toLowerCase().includes(logToDelete.employee.toLowerCase())) {
+          alert("You only have permission to delete your own attendance.");
+          return;
+        }
       }
     }
 
@@ -802,6 +857,25 @@ export default function App() {
     );
   }
 
+  // Derived state for access control
+  const activeUserEmail = user?.email?.toLowerCase() || "";
+  const isAditya = activeUserEmail === "adyy462@gmail.com";
+  
+  const visibleEmployees = employees.filter(emp => {
+    if (isAditya) return true;
+    return activeUserEmail.includes(emp.toLowerCase());
+  });
+
+  const visibleLogs = logs.filter(log => {
+    if (isAditya) return true;
+    return activeUserEmail.includes(log.employee.toLowerCase());
+  });
+
+  const visibleSummaries = summaries.filter(s => {
+    if (isAditya) return true;
+    return activeUserEmail.includes(s.employee.toLowerCase());
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans" id="app-dashboard">
       <Header
@@ -866,8 +940,8 @@ export default function App() {
           <TodayTab
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
-            employees={employees}
-            logs={logs}
+            employees={visibleEmployees}
+            logs={visibleLogs}
             onLogAttendance={handleLogAttendance}
             onAddEmployee={handleAddEmployee}
             currentUserEmail={user?.email || ""}
@@ -876,8 +950,8 @@ export default function App() {
 
         {activeTab === "Calendar" && (
           <CalendarTab
-            logs={logs}
-            employees={employees}
+            logs={visibleLogs}
+            employees={visibleEmployees}
             selectedDate={selectedDate}
             onDateSelect={(day) => {
               setSelectedDate(day);
@@ -888,9 +962,9 @@ export default function App() {
 
         {activeTab === "Summary" && (
           <SummaryTab
-            logs={logs}
-            employees={employees}
-            summaries={summaries}
+            logs={visibleLogs}
+            employees={visibleEmployees}
+            summaries={visibleSummaries}
             onExportCsv={handleExportCsv}
             isExporting={false}
           />
@@ -898,8 +972,8 @@ export default function App() {
 
         {activeTab === "History" && (
           <HistoryTab
-            logs={logs}
-            employees={employees}
+            logs={visibleLogs}
+            employees={visibleEmployees}
             onDeleteLog={handleDeleteLog}
             currentUserEmail={user?.email || ""}
           />

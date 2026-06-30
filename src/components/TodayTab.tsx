@@ -90,7 +90,9 @@ export default function TodayTab({
       {/* Date Header Switcher */}
       <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col items-center">
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Attendance Sheet</span>
-        <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-wide mt-0.5">Aditya & Kuldeep</h2>
+        <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-wide mt-0.5">
+          {employees.length <= 2 ? employees.join(" & ") : `${employees.length} Team Members`}
+        </h2>
 
         <div className="flex items-center gap-4 mt-3 w-full justify-between max-w-xs">
           <button
