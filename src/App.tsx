@@ -57,7 +57,8 @@ export default function App() {
   // Core Data state
   const [logs, setLogs] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem("attendance_logs");
-    return saved ? JSON.parse(saved) : [];
+    const parsedLogs = saved ? JSON.parse(saved) : [];
+    return parsedLogs.filter((l: AttendanceRecord) => l.employee.toLowerCase() !== "kuldeep");
   });
   const [summaries, setSummaries] = useState<MonthlySummary[]>(() => {
     // If we had summaries saved we could load them, else compute later
@@ -65,12 +66,19 @@ export default function App() {
   });
   const [employees, setEmployees] = useState<string[]>(() => {
     const saved = localStorage.getItem("attendance_employees");
-    return saved ? JSON.parse(saved) : ["Aditya", "Kuldeep"];
+    const parsedEmployees = saved ? JSON.parse(saved) : ["Aditya"];
+    return parsedEmployees.filter((e: string) => e.toLowerCase() !== "kuldeep");
   });
   
   // Navigation & Date state
   const [activeTab, setActiveTab] = useState<"Today" | "Calendar" | "Summary" | "History">("Today");
-  const [selectedDate, setSelectedDate] = useState("2026-06-30"); // Initialized to June 30, 2026 to match visual mockups
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }); // Initialized to today's date
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error" | "offline">("offline");
 
   const [errorAlert, setErrorAlert] = useState<string | null>(null);
@@ -202,10 +210,12 @@ export default function App() {
     const savedLogs = localStorage.getItem("attendance_logs");
     const savedEmployees = localStorage.getItem("attendance_employees");
     if (savedLogs) {
-      setLogs(JSON.parse(savedLogs));
+      const parsedLogs = JSON.parse(savedLogs);
+      setLogs(parsedLogs.filter((l: AttendanceRecord) => l.employee.toLowerCase() !== "kuldeep"));
     }
     if (savedEmployees) {
-      setEmployees(JSON.parse(savedEmployees));
+      const parsedEmployees = JSON.parse(savedEmployees);
+      setEmployees(parsedEmployees.filter((e: string) => e.toLowerCase() !== "kuldeep"));
     }
   };
 
@@ -297,8 +307,8 @@ export default function App() {
 
       if (data.logs && data.logs.length > 0) {
         // Merge remote logs into local logs based on timestamp
-        const remoteLogsMap = new Map(data.logs.map(l => [l.id, l]));
-        const localLogsMap = new Map(logs.map(l => [l.id, l]));
+        const remoteLogsMap = new Map<string, AttendanceRecord>((data.logs as AttendanceRecord[]).map(l => [l.id, l]));
+        const localLogsMap = new Map<string, AttendanceRecord>(logs.map(l => [l.id, l]));
 
         const finalLogsMap = new Map<string, AttendanceRecord>();
 
@@ -311,13 +321,11 @@ export default function App() {
             const localTime = new Date(localLog.timestamp).getTime();
             if (remoteTime > localTime) {
               finalLogsMap.set(id, remoteLog);
-              didMergeChange = true;
             } else {
               finalLogsMap.set(id, localLog);
             }
           } else {
             finalLogsMap.set(id, remoteLog);
-            didMergeChange = true;
           }
         }
 
@@ -328,22 +336,20 @@ export default function App() {
           }
         }
 
-        mergedLogs = Array.from(finalLogsMap.values());
+        mergedLogs = Array.from(finalLogsMap.values()).filter(l => l.employee.toLowerCase() !== "kuldeep");
         
         setLogs(mergedLogs);
         
         const allUniqueEmployees = Array.from(
-          new Set(["Aditya", "Kuldeep", ...mergedLogs.map((l) => l.employee)])
-        ).filter(Boolean);
+          new Set(["Aditya", ...mergedLogs.map((l) => l.employee)])
+        ).filter(Boolean).filter(e => e.toLowerCase() !== "kuldeep");
         setEmployees(allUniqueEmployees);
         
         saveOfflineData(mergedLogs, allUniqueEmployees);
 
-        if (didMergeChange) {
-           // If we absorbed new changes from remote, we need to recompute summaries
-           const updatedSummaries = computeSummaries(mergedLogs, allUniqueEmployees);
-           setSummaries(updatedSummaries);
-        }
+        // Always compute summaries to ensure they are up to date and populated initially
+        const updatedSummaries = computeSummaries(mergedLogs, allUniqueEmployees);
+        setSummaries(updatedSummaries);
       }
 
       setSyncStatus("synced");
@@ -901,7 +907,7 @@ export default function App() {
             <div className="flex-1">
               <span className="text-xs font-black uppercase tracking-wider block">⏰ Morning Reminder (10:00 AM)</span>
               <p className="text-[11px] text-indigo-100 mt-0.5 leading-normal font-medium">
-                Good morning! Please remember to mark your attendance status for Aditya, Kuldeep, and other team members for today.
+                Good morning! Please remember to mark your attendance status and other team members for today.
               </p>
               <div className="flex gap-2 mt-2">
                 <button

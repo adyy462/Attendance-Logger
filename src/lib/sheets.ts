@@ -105,7 +105,6 @@ export async function ensureRequiredSheetsExist(spreadsheetId: string, token: st
         const sampleLogs = [
           ["2026-06-16", "Aditya", "Half Day", "appointment", new Date("2026-06-16T10:00:00Z").toISOString()],
           ["2026-06-15", "Aditya", "Present", "", new Date("2026-06-15T09:00:00Z").toISOString()],
-          ["2026-06-15", "Kuldeep", "Absent", "", new Date("2026-06-15T09:30:00Z").toISOString()],
           ["2026-06-08", "Aditya", "Week Off", "", new Date("2026-06-08T08:00:00Z").toISOString()],
         ];
         const logAppendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet2!A2:E100:append?valueInputOption=USER_ENTERED`;
@@ -132,11 +131,8 @@ export async function ensureRequiredSheetsExist(spreadsheetId: string, token: st
         
         const starterRows = [
           ["June 2026", "Aditya", "26", "24", "1", "2", "90.38%"],
-          ["June 2026", "Kuldeep", "29", "21", "0", "8", "72.41%"],
           ["July 2026", "Aditya", "31", "0", "0", "0", "0.00%"],
-          ["July 2026", "Kuldeep", "31", "0", "0", "0", "0.00%"],
           ["August 2026", "Aditya", "31", "0", "0", "0", "0.00%"],
-          ["August 2026", "Kuldeep", "31", "0", "0", "0", "0.00%"],
         ];
         const summaryAppendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Monthly Summary!A2:G100:append?valueInputOption=USER_ENTERED`;
         await sheetsFetch(summaryAppendUrl, token, {
@@ -243,19 +239,12 @@ async function initializeSheets(spreadsheetId: string, token: string) {
   // Starter summary rows based on June-December defaults
   const starterRows = [
     ["June 2026", "Aditya", "26", "24", "1", "2", "90.38%"],
-    ["June 2026", "Kuldeep", "29", "21", "0", "8", "72.41%"],
     ["July 2026", "Aditya", "31", "0", "0", "0", "0.00%"],
-    ["July 2026", "Kuldeep", "31", "0", "0", "0", "0.00%"],
     ["August 2026", "Aditya", "31", "0", "0", "0", "0.00%"],
-    ["August 2026", "Kuldeep", "31", "0", "0", "0", "0.00%"],
     ["September 2026", "Aditya", "30", "0", "0", "0", "0.00%"],
-    ["September 2026", "Kuldeep", "30", "0", "0", "0", "0.00%"],
     ["October 2026", "Aditya", "31", "0", "0", "0", "0.00%"],
-    ["October 2026", "Kuldeep", "31", "0", "0", "0", "0.00%"],
     ["November 2026", "Aditya", "30", "0", "0", "0", "0.00%"],
-    ["November 2026", "Kuldeep", "30", "0", "0", "0", "0.00%"],
     ["December 2026", "Aditya", "31", "0", "0", "0", "0.00%"],
-    ["December 2026", "Kuldeep", "31", "0", "0", "0", "0.00%"],
   ];
 
   // Append starter rows to summary
@@ -271,7 +260,6 @@ async function initializeSheets(spreadsheetId: string, token: string) {
   const sampleLogs = [
     ["2026-06-16", "Aditya", "Half Day", "appointment", new Date("2026-06-16T10:00:00Z").toISOString()],
     ["2026-06-15", "Aditya", "Present", "", new Date("2026-06-15T09:00:00Z").toISOString()],
-    ["2026-06-15", "Kuldeep", "Absent", "", new Date("2026-06-15T09:30:00Z").toISOString()],
     ["2026-06-08", "Aditya", "Week Off", "", new Date("2026-06-08T08:00:00Z").toISOString()],
   ];
 

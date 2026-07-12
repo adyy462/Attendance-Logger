@@ -32,8 +32,13 @@ export default function TodayTab({
   const [tempNotes, setTempNotes] = useState<{ [employee: string]: string }>({});
 
   // Helper to format date like "June 30, 2026"
+  const getLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split("-");
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  };
+
   const formatDateString = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = getLocalDate(dateStr);
     return d.toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
@@ -41,16 +46,27 @@ export default function TodayTab({
     });
   };
 
+  const formatDayOfWeek = (dateStr: string) => {
+    const d = getLocalDate(dateStr);
+    return d.toLocaleDateString("en-US", { weekday: "short" });
+  };
+
   const handlePrevDay = () => {
-    const d = new Date(selectedDate);
+    const d = getLocalDate(selectedDate);
     d.setDate(d.getDate() - 1);
-    onDateChange(d.toLocaleDateString("sv-SE")); // YYYY-MM-DD
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    onDateChange(`${year}-${month}-${day}`);
   };
 
   const handleNextDay = () => {
-    const d = new Date(selectedDate);
+    const d = getLocalDate(selectedDate);
     d.setDate(d.getDate() + 1);
-    onDateChange(d.toLocaleDateString("sv-SE")); // YYYY-MM-DD
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    onDateChange(`${year}-${month}-${day}`);
   };
 
   // Find logs for today
@@ -103,9 +119,12 @@ export default function TodayTab({
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="text-center">
-            <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Today</span>
+            <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Date</span>
             <span className="text-sm font-bold text-slate-800 font-mono" id="current-selected-date">
               {formatDateString(selectedDate)}
+            </span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 block" id="current-selected-day">
+              {formatDayOfWeek(selectedDate)}
             </span>
           </div>
           <button
@@ -254,7 +273,7 @@ export default function TodayTab({
                           } else {
                             return; // User cancelled
                           }
-                        } else if (currentStatus === "Absent" && status !== "Absent") {
+                        } else if (currentStatus === "Absent") {
                           // Clear absence reason when changing from Absent to something else
                           finalNotes = "";
                           setTempNotes({ ...tempNotes, [employee]: "" });
