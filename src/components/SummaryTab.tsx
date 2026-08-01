@@ -4,7 +4,8 @@
  */
 
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, FileSpreadsheet, Download, RefreshCw, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, Download, RefreshCw, Printer, FileText } from "lucide-react";
+import { jsPDF } from "jspdf";
 import { AttendanceStatus, AttendanceRecord, MonthlySummary } from "../types";
 import HolidayChart from "./HolidayChart";
 
@@ -28,6 +29,7 @@ export default function SummaryTab({
     return new Date(2026, 5, 1); // June (0-indexed month 5)
   });
 
+  const [selectedPerson, setSelectedPerson] = useState<string>(() => employees[0] || "Aditya");
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
 
@@ -153,6 +155,156 @@ export default function SummaryTab({
     }
   };
 
+  const handleDownloadPdfForEmployee = (employee: string) => {
+    const stats = getEmployeeStats(employee);
+    const doc = new jsPDF();
+    const year = selectedMonthDate.getFullYear();
+    const monthIndex = selectedMonthDate.getMonth();
+    const monthName = selectedMonthDate.toLocaleDateString("en-US", { month: "long" });
+    const fullMonthStr = `${monthName} ${year}`;
+    const totalDaysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+    // Top Header Banner
+    doc.setFillColor(79, 70, 229); // Indigo 600
+    doc.rect(0, 0, 210, 26, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("ATTENDANCE REPORT", 14, 17);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(fullMonthStr, 196, 17, { align: "right" });
+
+    // Employee Name & Metadata
+    doc.setTextColor(30, 41, 59);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text(`Employee: ${employee}`, 14, 36);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 42);
+
+    // Key Stats Box
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14, 47, 182, 26, 3, 3, "FD");
+
+    const colWidth = 182 / 5;
+    const metrics = [
+      { label: "EXPECTED DAYS", val: `${stats.expectedDays}` },
+      { label: "PRESENT (NET)", val: `${stats.netPresentValue}` },
+      { label: "HALF DAYS", val: `${stats.halfDays}` },
+      { label: "ABSENT", val: `${stats.absentDays}` },
+      { label: "ATTENDANCE %", val: `${stats.attendancePct}` },
+    ];
+
+    metrics.forEach((m, idx) => {
+      const x = 14 + idx * colWidth + colWidth / 2;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(m.label, x, 55, { align: "center" });
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(30, 41, 59);
+      doc.text(m.val, x, 66, { align: "center" });
+    });
+
+    // Daily Table Header
+    let y = 84;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y - 6, 182, 8, "F");
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(51, 65, 85);
+    doc.text("Date", 18, y);
+    doc.text("Day", 45, y);
+    doc.text("Status", 75, y);
+    doc.text("Notes / Remarks", 120, y);
+
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+      const dateObj = new Date(year, monthIndex, day);
+      const dayName = dayNames[dateObj.getDay()];
+      const dateStr = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const formattedDate = `${String(day).padStart(2, "0")} ${monthName.slice(0, 3)} ${year}`;
+
+      const log = logs.find((l) => l.employee === employee && l.date === dateStr);
+      const status = log ? log.status : (dateObj.getDay() === 0 ? "Week Off" : "—");
+      const notes = log?.notes || "";
+
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+
+        doc.setFillColor(241, 245, 249);
+        doc.rect(14, y - 6, 182, 8, "F");
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(51, 65, 85);
+        doc.text("Date", 18, y);
+        doc.text("Day", 45, y);
+        doc.text("Status", 75, y);
+        doc.text("Notes / Remarks", 120, y);
+        y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+      }
+
+      if (day % 2 === 0) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(14, y - 4.5, 182, 6, "F");
+      }
+
+      doc.setTextColor(30, 41, 59);
+      doc.text(formattedDate, 18, y);
+      doc.text(dayName, 45, y);
+
+      if (status === "Present") {
+        doc.setTextColor(16, 185, 129);
+      } else if (status === "Half Day") {
+        doc.setTextColor(245, 158, 11);
+      } else if (status === "Absent") {
+        doc.setTextColor(239, 68, 68);
+      } else if (status === "Week Off") {
+        doc.setTextColor(100, 116, 139);
+      } else {
+        doc.setTextColor(148, 163, 184);
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.text(status, 75, y);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(71, 85, 105);
+      const truncatedNotes = notes.length > 40 ? notes.slice(0, 37) + "..." : notes;
+      doc.text(truncatedNotes || "—", 120, y);
+
+      y += 6;
+    }
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, 282, 196, 282);
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Attendance Log App • ${employee} • ${fullMonthStr}`, 14, 287);
+
+    const safeEmpName = employee.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const fileName = `Attendance_Report_${safeEmpName}_${monthName}_${year}.pdf`;
+    doc.save(fileName);
+  };
+
   // Compute stats for each employee for the current selected month
   const getEmployeeStats = (employee: string) => {
     const year = selectedMonthDate.getFullYear();
@@ -223,7 +375,34 @@ export default function SummaryTab({
           <p className="text-[11px] text-slate-400 font-medium">Monthly attendance overview</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <select
+            value={selectedPerson || (employees[0] || "")}
+            onChange={(e) => setSelectedPerson(e.target.value)}
+            className="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+            title="Select employee for PDF report"
+          >
+            {employees.map((emp) => (
+              <option key={emp} value={emp}>
+                {emp}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => {
+              const person = selectedPerson || employees[0];
+              if (person) {
+                handleDownloadPdfForEmployee(person);
+              }
+            }}
+            className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 px-3 py-2 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5"
+            title={`Save PDF report for ${selectedPerson || employees[0] || "person"}`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Save as PDF
+          </button>
+
           <button
             onClick={handlePrintDetailedReport}
             className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5"
@@ -337,8 +516,21 @@ export default function SummaryTab({
                   </div>
                 </div>
 
-                <div className={`px-2 py-0.5 rounded-full text-xs font-bold font-mono ${getPctBadgeClass(stats.attendancePctNum)}`}>
-                  {stats.attendancePct}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedPerson(employee);
+                      handleDownloadPdfForEmployee(employee);
+                    }}
+                    className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-colors shadow-xs"
+                    title={`Download PDF report for ${employee}`}
+                  >
+                    <FileText className="w-3 h-3" />
+                    PDF
+                  </button>
+                  <div className={`px-2 py-0.5 rounded-full text-xs font-bold font-mono ${getPctBadgeClass(stats.attendancePctNum)}`}>
+                    {stats.attendancePct}
+                  </div>
                 </div>
               </div>
 
