@@ -151,14 +151,9 @@ export default function App() {
         }
 
         if (isMounted) setSyncStatus("synced");
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed background sync (will retry with backoff):", err);
-        if (isMounted) {
-          if (err?.isAuthError || err?.message?.includes("401") || err?.message?.includes("403")) {
-            setToken(null);
-          }
-          setSyncStatus("error");
-        }
+        if (isMounted) setSyncStatus("error");
         success = false;
       } finally {
         syncInProgress = false;
@@ -501,11 +496,8 @@ export default function App() {
     setSummaries(updatedSummaries);
 
     // Queue for background push to Google Sheets if sync is enabled
-    if (syncEnabled && spreadsheetId) {
+    if (syncEnabled && spreadsheetId && token) {
       updatePendingSync({ logs: true, summaries: true });
-      if (!token) {
-        handleGoogleLogin().catch((e) => console.warn("Auto re-auth skipped:", e));
-      }
     }
   };
 
@@ -531,11 +523,8 @@ export default function App() {
     const updatedSummaries = computeSummaries(updatedLogs, employees);
     setSummaries(updatedSummaries);
 
-    if (syncEnabled && spreadsheetId) {
+    if (syncEnabled && spreadsheetId && token) {
       updatePendingSync({ logs: true, summaries: true });
-      if (!token) {
-        handleGoogleLogin().catch((e) => console.warn("Auto re-auth skipped:", e));
-      }
     }
   };
 
@@ -551,11 +540,8 @@ export default function App() {
     setSummaries(updatedSummaries);
 
     // Queue for background sync
-    if (syncEnabled && spreadsheetId) {
+    if (syncEnabled && spreadsheetId && token) {
       updatePendingSync({ summaries: true });
-      if (!token) {
-        handleGoogleLogin().catch((e) => console.warn("Auto re-auth skipped:", e));
-      }
     }
   };
 
@@ -941,22 +927,6 @@ export default function App() {
                 </button>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Reconnect Google Sheets Banner when Token Expired */}
-        {!token && user && syncEnabled && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3.5 rounded-2xl text-xs flex items-center justify-between gap-3 mb-4 shadow-sm">
-            <div className="flex items-center gap-2 min-w-0">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span className="font-medium truncate">Sheets session expired (1-hr security limit).</span>
-            </div>
-            <button
-              onClick={handleGoogleLogin}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow-sm whitespace-nowrap transition-all shrink-0 active:scale-95"
-            >
-              Reconnect 1-Click
-            </button>
           </div>
         )}
 

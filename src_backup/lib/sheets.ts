@@ -19,11 +19,7 @@ async function sheetsFetch(url: string, token: string, options: RequestInit = {}
   if (!response.ok) {
     const errText = await response.text();
     console.error(`Google Sheets API Error on ${url}:`, errText);
-    const err: any = new Error(`Google Sheets API Error: ${response.statusText} (${errText})`);
-    if (response.status === 401 || response.status === 403) {
-      err.isAuthError = true;
-    }
-    throw err;
+    throw new Error(`Google Sheets API Error: ${response.statusText} (${errText})`);
   }
   return response.json();
 }
